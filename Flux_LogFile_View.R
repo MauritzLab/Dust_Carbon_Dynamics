@@ -7,15 +7,18 @@
 
 # All txt log files must be in the same folder from the sampling date yyyymmdd
 
+### To Do: 
+# flux_calc function calculates slopes but need to refine time interval
+# some files need custom time intervals for flux calculation
+
 # load libraries
 library(tidyr)
 library(dplyr)
 library(ggplot2)
 library(lubridate)
 library(stringr)
-library(data.table)
 library(plyr)
-library(cowplot)
+library(ggpmisc)
 
 # list all .txt flux files logged with LI-840 and list files in date folder
 # include file path in name
@@ -102,6 +105,22 @@ data %>%
   facet_grid(site~post_water)
 
 
+# visualise potential line fits: 
+# grup by sample ID, hour, rep
+# show only for 50-230 time points (linear section except P_T1)
+# use stat_poly from ggpmisc::
+# https://cran.r-project.org/web/packages/ggpmisc/vignettes/model-based-annotations.html
+formula <- y ~ x
+
+data %>%
+  filter(!(str_detect(sampleID, "pottingsoil")))%>%
+  ggplot(.,aes(ind_count,co2,color=sample_num, shape=factor(flux_rep)))+
+  geom_point(size=0.5)+
+  stat_poly_line(formula = formula) +
+  stat_poly_eq(formula = formula)+
+  xlim(c(50,225))+
+  facet_grid(site~post_water,scales="free_y")
+
 # Function to calculate slopes
 # calculate keeling slopes and intercepts
 flux_calc = function(Z) 
@@ -118,7 +137,7 @@ data.flux.sub <- data %>%
   filter(!(str_detect(sampleID, "pottingsoil")))%>%
   filter(ind_count> 49 & ind_count < 250)
 
-fluxes=ddply(data.flux.sub, .(sampleID, site, sample_num,post_water,flux_rep),  flux_calc)
+fluxes=ddply(data.flux.sub, .(date, samplesize,sampleID, site, sample_num,post_water,flux_rep),  flux_calc)
 
 # graph slopes by sample ID
 ggplot(fluxes, aes(sampleID,Flux.slope))+
@@ -127,6 +146,7 @@ ggplot(fluxes, aes(sampleID,Flux.slope))+
 # graph slopes by post water, sample number, and site
 ggplot(fluxes, aes(post_water,Flux.slope,color=sample_num))+
   geom_point()+
+  geom_hline(yintercept=0)+
   facet_grid(site~.)
 
 # graph r2 by post water, sample number, and site
@@ -134,3 +154,6 @@ ggplot(fluxes, aes(post_water,Flux.r2,color=sample_num))+
   geom_point()+
   geom_hline(yintercept=0.8)+
   facet_grid(site~.)
+
+# Add code to export fluxes as csv file
+
