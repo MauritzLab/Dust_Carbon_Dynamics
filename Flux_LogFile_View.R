@@ -22,7 +22,9 @@ library(ggpmisc)
 
 # list all .txt flux files logged with LI-840 and list files in date folder
 # include file path in name
-flux.files <- list.files("./Data/CFluxes/20250701/", full.names=TRUE)
+flux.files1 <- list.files("./Data/CFluxes/20250701/", full.names=TRUE)
+flux.files2<- list.files("./Data/CFluxes/20250702/", full.names=TRUE)
+flux.files3 <- list.files("./Data/CFluxes/20250703/", full.names=TRUE)
 
 # create column names that are easier to type
 # Original:
@@ -31,6 +33,7 @@ flux.files <- list.files("./Data/CFluxes/20250701/", full.names=TRUE)
 # [7] "Cell_Pressure.kPa."  "CO2_Absorption"      "H2O_Absorption"   
 flux.file.colnames <- c("date","time","co2","h2o.ppt","h2o.c","cell_temp","cell_press","co2_absorption","h2o_absorption")
 
+# function that reads files, uses the filename to create sample ID and adds and index count to rows for each file
 read_txt_colname <- function(colname){
   ret <- read.table(colname, sep=" ", skip=2, header=FALSE, stringsAsFactors=FALSE,col.names = flux.file.colnames)
   ret$ind_count <- seq(from=1,to=nrow(ret),by=1) # create a count that runs the length of each measurement
@@ -39,7 +42,13 @@ read_txt_colname <- function(colname){
   ret
 }
 
-data <- ldply(flux.files, read_txt_colname)
+# use the read_txt_colnames function to read and combine all files from the flux.files lists
+data1 <- ldply(flux.files1, read_txt_colname)
+data2 <- ldply(flux.files2, read_txt_colname)
+data3 <- ldply(flux.files3, read_txt_colname)
+
+# combine data from multiple day folders (list as many days as you want to combine)
+data <- rbind(data1, data2, data3)
 
 # format timestamp of data
 data <- data %>%
@@ -55,9 +64,19 @@ data <- data %>%
 # flux rep (redo of a flux measurement)
 data <- data %>%
   separate_wider_delim(sampleID, delim = "_",
-                       names = c("site","sample_num","post_water","flux_rep"),
+                       names = c("site","sample_num","post_water_h","flux_rep"),
                        too_few="align_start", too_many="merge", cols_remove=FALSE)
 
+# for post_water, create a numeric variable
+data <- data %>%
+  separate_wider_delim(post_water_h, delim = "h",
+                       names = "post_water",too_many="drop", cols_remove=FALSE) %>%
+  mutate(post_water = as.numeric(post_water))
+
+# make the flux_rep 0 when NA
+data <- data %>%
+  mutate(flux_rep = case_when (is.na(flux_rep) ~ 0L,
+                                       .default = TRUE))
 
 # graph the data
 # All CO2 fluxes by sample ID
@@ -114,11 +133,13 @@ formula <- y ~ x
 
 data %>%
   filter(!(str_detect(sampleID, "pottingsoil")))%>%
+  filter(ind_count> 49 & ind_count < 225) %>% 
+  #filter(post_water==0) %>%
   ggplot(.,aes(ind_count,co2,color=sample_num, shape=factor(flux_rep)))+
-  geom_point(size=0.5)+
-  stat_poly_line(formula = formula) +
+  geom_point(size=0.7)+
+  stat_poly_line(formula = formula, linewidth=0.3) +
   stat_poly_eq(formula = formula)+
-  xlim(c(50,225))+
+  #xlim(c(50,225))+
   facet_grid(site~post_water,scales="free_y")
 
 # Function to calculate slopes
@@ -135,13 +156,20 @@ flux_calc = function(Z)
 # subset only data and time period for flux calculation
 data.flux.sub <- data %>%
   filter(!(str_detect(sampleID, "pottingsoil")))%>%
-  filter(ind_count> 49 & ind_count < 250)
+  filter(ind_count> 49 & ind_count < 225)
 
 fluxes=ddply(data.flux.sub, .(date, samplesize,sampleID, site, sample_num,post_water,flux_rep),  flux_calc)
+
 
 # graph slopes by sample ID
 ggplot(fluxes, aes(sampleID,Flux.slope))+
   geom_point()
+
+# graph r2 by post water, sample number, and site
+ggplot(fluxes, aes(post_water,Flux.r2,color=sample_num))+
+  geom_point()+
+  geom_hline(yintercept=0.8)+
+  facet_grid(site~.)
 
 # graph slopes by post water, sample number, and site
 ggplot(fluxes, aes(post_water,Flux.slope,color=sample_num))+
@@ -149,11 +177,7 @@ ggplot(fluxes, aes(post_water,Flux.slope,color=sample_num))+
   geom_hline(yintercept=0)+
   facet_grid(site~.)
 
-# graph r2 by post water, sample number, and site
-ggplot(fluxes, aes(post_water,Flux.r2,color=sample_num))+
-  geom_point()+
-  geom_hline(yintercept=0.8)+
-  facet_grid(site~.)
+
 
 # Add code to export fluxes as csv file
 
