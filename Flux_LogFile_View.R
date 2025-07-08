@@ -7,6 +7,11 @@
 
 # All txt log files must be in the same folder from the sampling date yyyymmdd
 
+# Folders needed: 
+# Data/CFluxes: raw data from licor organised by date
+# CalcuatedFluxes: save the calculated flux slopes and R2 here, Can append and add to file or save by date or by batch
+# FluxFitFigures: save a pdf of the flux fits graph by sampleID with equations and r2
+
 ### To Do: 
 # flux_calc function calculates slopes but need to refine time interval
 # some files need custom time intervals for flux calculation
@@ -136,13 +141,33 @@ formula <- y ~ x
 data %>%
   filter(!(str_detect(sampleID, "pottingsoil")))%>%
   filter(ind_count> 49 & ind_count < 191) %>% 
+  #filter(post_water==8 | post_water==24) %>%
+  ggplot(.,aes(ind_count,co2,color=sample_num, shape=factor(flux_rep)))+
+  geom_point(size=0.7)+
+  #stat_poly_line(formula = formula, linewidth=0.3) +
+  #stat_poly_eq(formula = formula)+
+  #xlim(c(50,225))+
+  facet_grid(site~post_water,scales="free_y")
+
+# graph line fits for each sample ID in a separate facet to see more clearly
+graph.flux.fits <- data %>%
+  filter(!(str_detect(sampleID, "pottingsoil")))%>%
+  filter(ind_count> 49 & ind_count < 191) %>% 
   filter(post_water==8 | post_water==24) %>%
   ggplot(.,aes(ind_count,co2,color=sample_num, shape=factor(flux_rep)))+
   geom_point(size=0.7)+
   stat_poly_line(formula = formula, linewidth=0.3) +
-  stat_poly_eq(formula = formula)+
-  #xlim(c(50,225))+
-  facet_grid(site~post_water,scales="free_y")
+  stat_poly_eq(formula = formula, size=2,label.x = "right", label.y = "bottom") +
+  stat_poly_eq(mapping = use_label("eq"),formula = formula, size=2,label.x = "left", label.y = "top")+
+  facet_wrap(sampleID~.)
+
+graph.flux.fits
+
+# option to save the flux fits by sample ID graph for reference
+ggsave("GraphFluxFits_10gBatch1.pdf",
+       plot=graph.flux.fits,
+       path="./FluxFitFigures",device="pdf",
+       width=12, height=7, units="in")
 
 # Function to calculate slopes
 # calculate keeling slopes and intercepts
@@ -180,6 +205,15 @@ ggplot(fluxes, aes(post_water,Flux.slope,color=sample_num))+
   facet_grid(site~.)
 
 
+##### TO SAVE CALCULATED FLUXES ######
 
 # Add code to export fluxes as csv file
+# each time this is run, it should add to the existing file
+write.table(fluxes, file="./CalculatedFluxes/FluxSlopes.csv",append=TRUE,sep=",",dec=".",row.names=FALSE)
+
+# to save a new file by date or by group of samples,
+# chance the EDIT for FluxSlopes to either:
+# the date: yyyymmdd
+# the batch: eg: 10gBatch1
+write.table(fluxes, file="./CalculatedFluxes/CalculatedFluxes_EDIT.csv",append=TRUE,sep=",",dec=".",row.names=FALSE)
 
