@@ -9,7 +9,7 @@
 
 # Folders needed: 
 # Data/CFluxes: raw data from licor organised by date
-# CalcuatedFluxes: save the calculated flux slopes and R2 here, Can append and add to file or save by date or by batch
+# Data/CalcuatedFluxes: save the calculated flux slopes and R2 here, Can append and add to file or save by date or by batch
 # FluxFitFigures: save a pdf of the flux fits graph by sampleID with equations and r2
 
 ### To Do: 
@@ -209,11 +209,11 @@ ggplot(fluxes, aes(post_water,Flux.slope,color=sample_num))+
 
 # Add code to export fluxes as csv file
 # each time this is run, it should add to the existing file
-write.table(fluxes, file="./CalculatedFluxes/FluxSlopes.csv",append=TRUE,sep=",",dec=".",row.names=FALSE)
+write.table(fluxes, file="./Data/CalculatedFluxes/FluxSlopes.csv",append=TRUE,sep=",",dec=".",row.names=FALSE)
 
 # to save a new file by date or by group of samples,
 # chance the EDIT for FluxSlopes to either:
 # the date: yyyymmdd
 # the batch: eg: 10gBatch1
-write.table(fluxes, file="./CalculatedFluxes/CalculatedFluxes_EDIT.csv",append=TRUE,sep=",",dec=".",row.names=FALSE)
+write.table(fluxes, file="./Data/CalculatedFluxes/CalculatedFluxes_EDIT.csv",sep=",",dec=".",row.names=FALSE)
 
