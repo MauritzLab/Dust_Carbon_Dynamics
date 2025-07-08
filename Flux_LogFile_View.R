@@ -22,9 +22,9 @@ library(ggpmisc)
 
 # list all .txt flux files logged with LI-840 and list files in date folder
 # include file path in name
-flux.files1 <- list.files("./Data/CFluxes/20250701/", full.names=TRUE)
-flux.files2<- list.files("./Data/CFluxes/20250702/", full.names=TRUE)
-flux.files3 <- list.files("./Data/CFluxes/20250703/", full.names=TRUE)
+flux.files1 <- list.files("./Data/CFluxes/20250707/", full.names=TRUE)
+flux.files2<- list.files("./Data/CFluxes/20250708/", full.names=TRUE)
+#flux.files3 <- list.files("./Data/CFluxes/20250703/", full.names=TRUE)
 
 # create column names that are easier to type
 # Original:
@@ -45,10 +45,10 @@ read_txt_colname <- function(colname){
 # use the read_txt_colnames function to read and combine all files from the flux.files lists
 data1 <- ldply(flux.files1, read_txt_colname)
 data2 <- ldply(flux.files2, read_txt_colname)
-data3 <- ldply(flux.files3, read_txt_colname)
+#data3 <- ldply(flux.files3, read_txt_colname)
 
 # combine data from multiple day folders (list as many days as you want to combine)
-data <- rbind(data1, data2, data3)
+data <- rbind(data1, data2)
 
 # format timestamp of data
 data <- data %>%
@@ -91,16 +91,18 @@ data %>%
 data %>%
   ggplot(.,aes(ind_count,co2,color=sampleID))+
   geom_point(size=0.5)+
-  geom_line()
+  geom_line() +
+  theme(legend.position="none")
 
-# Almost all samples have linear CO2 increase section between time 50-225
+# Almost all test samples have linear CO2 increase section between time 50-225
+# for first round of 10g measurements timing was shorter, select 50-190
 # exclude potting soil
 data %>%
   filter(!(str_detect(sampleID, "pottingsoil")))%>%
   ggplot(.,aes(ind_count,co2,color=sampleID))+
   geom_point(size=0.5)+
   geom_line()+
-  xlim(c(50,225))
+  xlim(c(50,190))
 
 # exclude potting soil
 # grup by sample ID, hour, rep
@@ -133,8 +135,8 @@ formula <- y ~ x
 
 data %>%
   filter(!(str_detect(sampleID, "pottingsoil")))%>%
-  filter(ind_count> 49 & ind_count < 225) %>% 
-  #filter(post_water==0) %>%
+  filter(ind_count> 49 & ind_count < 191) %>% 
+  filter(post_water==8 | post_water==24) %>%
   ggplot(.,aes(ind_count,co2,color=sample_num, shape=factor(flux_rep)))+
   geom_point(size=0.7)+
   stat_poly_line(formula = formula, linewidth=0.3) +
@@ -156,7 +158,7 @@ flux_calc = function(Z)
 # subset only data and time period for flux calculation
 data.flux.sub <- data %>%
   filter(!(str_detect(sampleID, "pottingsoil")))%>%
-  filter(ind_count> 49 & ind_count < 225)
+  filter(ind_count> 49 & ind_count < 191)
 
 fluxes=ddply(data.flux.sub, .(date, samplesize,sampleID, site, sample_num,post_water,flux_rep),  flux_calc)
 
